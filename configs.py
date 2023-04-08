@@ -17,3 +17,4 @@ DUCKDB_INIT = f"""
     SET s3_url_style='path';
     SET s3_endpoint='s3.{S3_REGION}.amazonaws.com';
 """
+WIND_DATA_URL = "https://www.capetown.gov.za/_layouts/OpenDataPortalHandler/DownloadHandler.ashx?DocumentName=Wind_direction_and_speed_2020.ods&DatasetDocument=https%3A%2F%2Fcityapps.capetown.gov.za%2Fsites%2Fopendatacatalog%2FDocuments%2FWind%2FWind_direction_and_speed_2020.ods"
