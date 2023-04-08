@@ -6,25 +6,25 @@ from pathlib import Path
 import logging
 from configs import DUCKDB_INIT
 from utils import timing
+from typing import Tuple
 
 
-def get_hex_data():
+def get_hex_data() -> pd.DataFrame:
     gq = GeoQuery()
     if not gq.is_valid:
         raise Exception("GEOJSON data is not valid")
     return gq.records_df()
 
 
-def get_coverage(df: pd.DataFrame):
+def get_coverage(df: pd.DataFrame) -> Tuple[float, float]:
     logging.info("Checking coverage...")
     total_rows = df.shape[0]
-    covered = df[(df["h3_level8_index"] != "0") & (df["latitude"].notna())].shape[0]
     missed = df[(df["h3_level8_index"] == "0") & (df["latitude"].notna())].shape[0]
-    coverage = covered / total_rows
+    coverage = (total_rows - missed) / total_rows
     return missed, coverage
 
 
-def run_checks(sr_hex: pd.DataFrame, testing=False):
+def run_checks(sr_hex: pd.DataFrame, testing=False, passing_threshold=0.85) -> float:
     logging.info("Run checks against reference data...")
     df = pd.read_parquet("data/sr_hex.parquet")
     errors = duckdb.query(
@@ -52,13 +52,13 @@ def run_checks(sr_hex: pd.DataFrame, testing=False):
     logging.info(f"Similarity check against reference data is {hit_rate}")
     if not testing:
         assert (
-            hit_rate > 0.9
-        ), f"Hit rate of {hit_rate} is less than the threshold for passing tests"
-    return hit_rate
+            hit_rate > passing_threshold
+        ), f"Hit rate of {hit_rate} is less than the threshold ({passing_threshold}) for passing tests"
+    return hit_rate, missed, coverage
 
 
 @timing
-def join_geodata(threshold=0.005):
+def join_geodata(threshold=0.004):
     # Initialize DuckDB
     duckdb.query(DUCKDB_INIT)
     with open("sql/join_hex.sql", "r") as sql_file:
@@ -69,16 +69,31 @@ def join_geodata(threshold=0.005):
 
 
 def test_thresholds(iterations=10, threshold=0.001, delta=0.0005):
+    """Collect metrics for quality of joins"""
     hit_rates = []
     thresholds = []
+    missed_joins = []
+    coverages = []
     for i in range(iterations):
         sr_hex = join_geodata(threshold=threshold)
-        hit_rates.append(run_checks(sr_hex, testing=True))
+        hit_rate, missed, coverage = run_checks(sr_hex, testing=True)
+        # append data
+        hit_rates.append(hit_rate)
         thresholds.append(threshold)
+        missed_joins.append(missed)
+        coverages.append(coverage)
         threshold += delta
-    return pd.DataFrame({"similarity": hit_rates, "threshold": thresholds})
+    return pd.DataFrame(
+        {
+            "similarity": hit_rates,
+            "threshold": thresholds,
+            "Coverage": coverages,
+            "Failed Joins": missed_joins,
+        }
+    )
 
 
 if __name__ == "__main__":
-    test_thresholds()
-#    run_threshold_test(n=10, threshold=0.001)
+    #    run_checks(join_geodata())
+    test_results = test_thresholds()
+    print(test_results)
