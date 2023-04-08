@@ -20,13 +20,16 @@ def get_winds_data() -> pd.DataFrame:
     df = pd.read_excel(filename, skiprows=2, header=[0, 1, 2])
 
     # fix column names
-    df.columns = ["  ".join(c) if "Date" not in c[0] else c[0] for c in df.columns]
+    df.columns = [
+        "  ".join(c).strip() if "Date" not in c[0] else c[0] for c in df.columns
+    ]
 
     # Data ends at this point, filter all data out after this index
     stop_index = df[df["Date & Time"] == "Minimum"].index[0]
     df = df.iloc[:stop_index]
+    df["Date & Time"] = pd.to_datetime(df["Date & Time"], format="%d/%m/%Y %H:%M")
     # Replace NoData with None type
-    df = df.replace("NoData", None).replace("<samp", 0)
+    df = df.replace("NoData", None)
     return df
 
 
@@ -93,3 +96,29 @@ def filter_by_minute():
         & (abs(df_srv_hex_deg_min["lon_diff_min"]) < 2)
         & (abs(df_srv_hex_deg_min["lat_diff_min"]) < 2)
     ]
+
+
+def join_wind_to_service():
+    srv_hex_deg_min = filter_by_minute()
+    df_wind = get_winds_data()
+
+    return duckdb.query(
+        """
+        with service_tab as (
+        select
+          time_bucket(INTERVAL '1 hour', creation_timestamp) as round_datetime,
+          *,
+        from  srv_hex_deg_min),
+        winds as (
+        select
+          "Date & Time",
+          "Bellville South AQM Site  Wind Dir V  Deg" as wind_direction_degrees,
+          "Bellville South AQM Site  Wind Speed V  m/s" as wind_speed_metres_per_second,
+        from df_wind)
+        select
+          * exclude ("Date & Time", round_datetime)
+        from service_tab
+        left join winds on
+            service_tab.round_datetime = winds."Date & Time"
+        """
+    ).df()
