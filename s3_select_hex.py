@@ -4,6 +4,7 @@ import pandas as pd
 from validation import Feature
 from typing import List
 import logging
+from utils import timing
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,6 +20,7 @@ class GeoQuery:
         self.query = query
         self.get_records()
 
+    @timing
     def get_records(self) -> List[Feature]:
         """S3 query that returns level 8 resolution polygons."""
         resp = self.s3.select_object_content(
