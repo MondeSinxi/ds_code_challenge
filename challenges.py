@@ -46,7 +46,7 @@ def challenge_two(
 
 
 @app.command()
-def challenge_three(
+def challenge_five(
     download_wind_data: bool = typer.Argument(
         True, help="Download wind file and write out to data/wind_data.ods"
     ),
