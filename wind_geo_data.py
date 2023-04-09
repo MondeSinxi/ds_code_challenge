@@ -8,7 +8,7 @@ import duckdb
 from s3_select_hex import GeoQuery
 import logging
 from typing import Tuple
-from utils import generate_array_of_randoms
+from utils import generate_array_of_randoms, timing
 
 filename = "data/wind_data.ods"
 
@@ -99,10 +99,11 @@ def filter_by_minute():
     ]
 
 
+@timing
 def join_wind_to_service():
     srv_hex_deg_min = filter_by_minute()
     df_wind = get_winds_data()
-
+    logging.info("Joining wind data to service data")
     return duckdb.query(
         """
         with service_tab as (
