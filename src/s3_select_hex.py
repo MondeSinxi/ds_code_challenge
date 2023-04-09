@@ -5,6 +5,7 @@ from typing import List
 import logging
 from src.utils import timing
 from src.validation import Feature
+from src.configs import S3_ACCESS_KEY, S3_SECRET_ACCESS_KEY, S3_REGION
 
 logging.basicConfig(level=logging.INFO)
 
@@ -15,8 +16,13 @@ query = "SELECT * FROM s3object[*].features[*] s WHERE s.properties.resolution =
 
 
 class GeoQuery:
-    def __init__(self, query=query, region_name="af-south-1"):
-        self.s3 = boto3.client("s3", region_name=region_name)
+    def __init__(self, query=query):
+        self.s3 = boto3.client(
+            "s3",
+            aws_access_key_id=S3_ACCESS_KEY,
+            aws_secret_access_key=S3_SECRET_ACCESS_KEY,
+            region_name=S3_REGION,
+        )
         self.query = query
         self.get_records()
 
