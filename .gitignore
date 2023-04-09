@@ -1,2 +1,3 @@
 .secrets/
 __pycache__/
+data/wind_data.ods
