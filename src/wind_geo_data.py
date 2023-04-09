@@ -1,14 +1,15 @@
 import urllib.request
-from configs import WIND_DATA_URL
 import math
 import numpy as np
 from pathlib import Path
 import pandas as pd
 import duckdb
-from s3_select_hex import GeoQuery
 import logging
 from typing import Tuple
-from utils import generate_array_of_randoms, timing
+
+from src.configs import WIND_DATA_URL
+from src.s3_select_hex import GeoQuery
+from src.utils import generate_array_of_randoms, timing
 
 filename = "data/wind_data.ods"
 
@@ -69,7 +70,7 @@ def convert_to_deg_min_sec(val):
     return deg, abs(minu), abs(sec)
 
 
-def filter_by_minute():
+def filter_by_minute(suburb: str = "BELLVILLE SOUTH") -> pd.DataFrame:
     df_srv_hex = pd.read_parquet("data/sr_hex.parquet")
     df_srv_hex_deg_min = duckdb.query(
         """
@@ -82,7 +83,7 @@ def filter_by_minute():
         """
     ).df()
 
-    lat_centroid, long_centroid = get_suburb_centroid()
+    lat_centroid, long_centroid = get_suburb_centroid(suburb)
     lat_degree, lat_min, lat_sec = convert_to_deg_min_sec(lat_centroid)
     long_degree, long_min, long_sec = convert_to_deg_min_sec(long_centroid)
 
@@ -100,10 +101,10 @@ def filter_by_minute():
 
 
 @timing
-def join_wind_to_service():
-    srv_hex_deg_min = filter_by_minute()
+def join_wind_to_service(suburb: str):
+    srv_hex_deg_min = filter_by_minute(suburb)
     df_wind = get_winds_data()
-    logging.info("Joining wind data to service data")
+    logging.info("Joining wind data to service data...")
     return duckdb.query(
         """
         with service_tab as (
@@ -118,7 +119,7 @@ def join_wind_to_service():
           "Bellville South AQM Site  Wind Speed V  m/s" as wind_speed_metres_per_second,
         from df_wind)
         select
-          * exclude ("Date & Time", round_datetime)
+          * exclude ("Date & Time", round_datetime, long_degree, lat_degree, long_min, lat_min, long_diff, lat_diff, lon_diff_min, lat_diff_min)
         from service_tab
         left join winds on
             service_tab.round_datetime = winds."Date & Time"
@@ -127,8 +128,8 @@ def join_wind_to_service():
 
 
 def anonymise_coordinates(
-    longitude: pd.Series, latitude: pd.Series, within_max_distance=500
-):
+    latitude: pd.Series, longitude: pd.Series, within_max_distance=500
+) -> Tuple[pd.Series, pd.Series]:
     # 1 second latitude ~= 31 metres; 1 sec = 1/3600 deg
     # 1 second longitude ~= 25 metres; 1 sec = 1/3600 deg
 
@@ -143,3 +144,10 @@ def anonymise_coordinates(
     lon_variance = (2 * lon_max_abs_var * mrandoms) - lon_max_abs_var
 
     return latitude + lat_variance, longitude + lon_variance
+
+
+def anonymise(service_data: pd.DataFrame) -> pd.DataFrame:
+    service_data["latitude"], service_data["longitude"] = anonymise_coordinates(
+        service_data["latitude"], service_data["longitude"]
+    )
+    return service_data
