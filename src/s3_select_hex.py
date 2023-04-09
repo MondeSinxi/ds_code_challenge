@@ -1,10 +1,10 @@
 import boto3
 import json
 import pandas as pd
-from validation import Feature
 from typing import List
 import logging
-from utils import timing
+from src.utils import timing
+from src.validation import Feature
 
 logging.basicConfig(level=logging.INFO)
 

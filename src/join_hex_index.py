@@ -1,12 +1,12 @@
-"""Testing for threshold"""
-from s3_select_hex import GeoQuery
 import duckdb
 import pandas as pd
 from pathlib import Path
 import logging
-from configs import DUCKDB_INIT
-from utils import timing
 from typing import Tuple
+
+from src.s3_select_hex import GeoQuery
+from src.configs import DUCKDB_INIT
+from src.utils import timing
 
 
 def get_hex_data() -> pd.DataFrame:
@@ -58,7 +58,7 @@ def run_checks(sr_hex: pd.DataFrame, testing=False, passing_threshold=0.85) -> f
 
 
 @timing
-def join_geodata(threshold=0.004):
+def join_geodata(threshold=0.0045):
     # Initialize DuckDB
     duckdb.query(DUCKDB_INIT)
     with open("sql/join_hex.sql", "r") as sql_file:
