@@ -1,4 +1,6 @@
-# Challenge 2 Notes
+# Notes
+
+## Challenge Two
 
 To reduce latency, we write out data from S3 to local storage as parquet files in the `data` directory. We only have to write the files out once, this reduces the necessity to make queries over a network.
 
@@ -23,3 +25,13 @@ Table 1: Metrics testing the quality of joining service data to geojson data.
  |  0.888184  |   0.0045  | 0.997133 |         2700 |
  |  0.822788  |   0.0050  | 0.999999 |            1 |
  |  0.741667  |   0.0055  | 1.000000 |            0 |
+
+
+## Challenge Three
+
+Used 'sr_hex' data to get all H8 index codes for suburb 'BELLVILLE SOUTH'. Eight codes were found; these were then used to filter `city-hex-polygons-8.geojson` to retrieve
+the centroids of each. We then used the arithmetic mean to find the longitude and latititude centroid coordinates respectively. To find all notifications within 1 minute we converted decimal degrees to degrees, minutes, seconds and filtered for locations within one minute of the centroid.
+
+We have also anonymised data by adding random degrees to latitude and longitude data, where the perturbations would be limited to around 500m.
+The exact location has to be anonymised in order to limit leaks of personal identifiable information (PII). It is important to keep the identities of citizens
+who log calls private.
