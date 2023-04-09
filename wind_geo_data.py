@@ -8,6 +8,7 @@ import duckdb
 from s3_select_hex import GeoQuery
 import logging
 from typing import Tuple
+from utils import generate_array_of_randoms
 
 filename = "data/wind_data.ods"
 
@@ -74,9 +75,9 @@ def filter_by_minute():
         """
         select *,
         floor(longitude)::integer long_degree,
-        floor(60*(longitude - floor(longitude)))::integer long_min,
+        floor(60*(longitude - long_degree))::integer long_min,
         ceil(latitude)::integer lat_degree,
-	abs(floor(60*(latitude - ceil(latitude))))::integer lat_min
+	abs(floor(60*(latitude - lat_degree)))::integer lat_min,
         from df_srv_hex
         """
     ).df()
@@ -122,3 +123,22 @@ def join_wind_to_service():
             service_tab.round_datetime = winds."Date & Time"
         """
     ).df()
+
+
+def anonymise_coordinates(
+    longitude: pd.Series, latitude: pd.Series, within_max_distance=500
+):
+    # 1 second latitude ~= 31 metres; 1 sec = 1/3600 deg
+    # 1 second longitude ~= 25 metres; 1 sec = 1/3600 deg
+
+    lat_max_abs_var = (within_max_distance / 31) / 3600
+    lon_max_abs_var = (within_max_distance / 25) / 3600
+    # generate randomness
+    n = len(latitude)
+    randoms = np.array(generate_array_of_randoms(n))
+    mrandoms = 1 - randoms
+
+    lat_variance = (2 * lat_max_abs_var * randoms) - lat_max_abs_var
+    lon_variance = (2 * lon_max_abs_var * mrandoms) - lon_max_abs_var
+
+    return latitude + lat_variance, longitude + lon_variance
